@@ -22,23 +22,38 @@ import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Service responsible for operations on statistics
+ */
 @Singleton
 @ApplicationScoped
 @FacesConfig
 public class StatisticsService {
 
+    @SuppressWarnings("CdiInjectionPointsInspection")
     @Inject
     @Push(channel = "push")
     private PushContext push;
 
     private List<ProductStatistics> statistics;
 
+    /**
+     * Returns the list of product statistics for top 10 products from class field.
+     * Gives access to the list from JSF.
+     *
+     * @return {@link List} of {@link ProductStatistics}
+     */
     @Named
     @Produces
     public List<ProductStatistics> getStatistics() {
         return statistics;
     }
 
+    /**
+     * Returns the list of product statistics for top 10 products from REST WebService.
+     *
+     * @return {@link List} of {@link ProductStatistics}
+     */
     public List<ProductStatistics> getDataFromWebService() {
         Client client = ClientBuilder.newClient();
         WebTarget target = client.target("http://localhost:8081/stand");
@@ -59,6 +74,10 @@ public class StatisticsService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * Initiates field 'statistics'.
+     * Creates {@link MessageListener} to update statistics.
+     */
     @PostConstruct
     public void init() {
         this.statistics = getDataFromWebService();
