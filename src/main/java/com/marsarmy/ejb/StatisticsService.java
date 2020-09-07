@@ -2,6 +2,7 @@ package com.marsarmy.ejb;
 
 import com.marsarmy.model.ProductStatistics;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.log4j.Logger;
 
 import javax.annotation.PostConstruct;
 import javax.ejb.Singleton;
@@ -37,6 +38,8 @@ public class StatisticsService {
 
     private List<ProductStatistics> statistics;
 
+    private static final Logger LOGGER = Logger.getLogger(StatisticsService.class);
+
     /**
      * Returns the list of product statistics for top 10 products from class field.
      * Gives access to the list from JSF.
@@ -60,7 +63,7 @@ public class StatisticsService {
         Response response = target.request().get();
         JsonArray jsonArray = response.readEntity(JsonArray.class);
 
-        return jsonArray.stream().map(json -> {
+        List<ProductStatistics> result = jsonArray.stream().map(json -> {
             ProductStatistics productStatistics = new ProductStatistics();
             productStatistics.setUpc(((JsonObject) json).getJsonNumber("upc").longValue());
             productStatistics.setName(((JsonObject) json).getString("name"));
@@ -72,6 +75,10 @@ public class StatisticsService {
             System.out.println(productStatistics.toString());
             return productStatistics;
         }).collect(Collectors.toList());
+
+        LOGGER.info("Received statistics from the server");
+
+        return result;
     }
 
     /**
@@ -81,6 +88,8 @@ public class StatisticsService {
     @PostConstruct
     public void init() {
         this.statistics = getDataFromWebService();
+        LOGGER.info("Statistics saved on the client side");
+
         ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("failover://(tcp://localhost:61616)");
         Connection connection;
         try {
@@ -90,11 +99,14 @@ public class StatisticsService {
             Topic topic = session.createTopic("UpdateTopic");
             MessageConsumer consumer = session.createConsumer(topic);
             consumer.setMessageListener(message -> {
+                LOGGER.info("Received a message from the server about the availability of statistics update");
                 this.statistics = getDataFromWebService();
+                LOGGER.info("Statistics saved on the client side");
                 push.send("push");
+                LOGGER.info("Message pushed to the websocket");
             });
         } catch (JMSException e) {
-            e.printStackTrace();
+            LOGGER.error("Error: " + e.getMessage(), e);
         }
     }
 }
