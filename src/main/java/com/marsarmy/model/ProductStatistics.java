@@ -7,6 +7,9 @@ import lombok.ToString;
 
 import java.io.Serializable;
 
+/**
+ * DTO of product statistics
+ */
 @NoArgsConstructor
 @Getter
 @Setter
