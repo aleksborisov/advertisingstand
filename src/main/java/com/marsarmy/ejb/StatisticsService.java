@@ -1,5 +1,7 @@
 package com.marsarmy.ejb;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marsarmy.model.ProductStatistics;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.log4j.Logger;
@@ -14,14 +16,12 @@ import javax.faces.push.PushContext;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.jms.*;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Service responsible for operations on statistics
@@ -61,20 +61,16 @@ public class StatisticsService {
         Client client = ClientBuilder.newClient();
         WebTarget target = client.target("http://localhost:8081/stand");
         Response response = target.request().get();
-        JsonArray jsonArray = response.readEntity(JsonArray.class);
+        String jsonArray = response.readEntity(String.class);
 
-        List<ProductStatistics> result = jsonArray.stream().map(json -> {
-            ProductStatistics productStatistics = new ProductStatistics();
-            productStatistics.setUpc(((JsonObject) json).getJsonNumber("upc").longValue());
-            productStatistics.setName(((JsonObject) json).getString("name"));
-            productStatistics.setColor(((JsonObject) json).getString("color"));
-            productStatistics.setBrand(((JsonObject) json).getString("brand"));
-            productStatistics.setCategory(((JsonObject) json).getString("category"));
-            productStatistics.setPrice(((JsonObject) json).getInt("price"));
-            productStatistics.setQuantitySold(((JsonObject) json).getJsonNumber("quantitySold").longValue());
-            System.out.println(productStatistics.toString());
-            return productStatistics;
-        }).collect(Collectors.toList());
+        ObjectMapper mapper = new ObjectMapper();
+        List<ProductStatistics> result = new ArrayList<>();
+        try {
+            //noinspection unchecked
+            result = mapper.readValue(jsonArray, List.class);
+        } catch (JsonProcessingException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
 
         LOGGER.info("Received statistics from the server");
 
